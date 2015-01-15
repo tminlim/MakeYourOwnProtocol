@@ -22,7 +22,7 @@ enum proto_state { wait_CON = 0, CON_sent = 1, CONNECTED = 2 , SENDING = 3};    
 
 // Events
 enum proto_event { RCV_CON = 0, RCV_FIN = 1, RCV_ACK = 2, RCV_DATA = 3,
-                   CONNECT = 4, CLOSE = 5,   SEND = 6,    TIMEOUT = 7 FAIL_RTM = 8};
+                   CONNECT = 4, CLOSE = 5,   SEND = 6,    TIMEOUT = 7 ,FAIL_RTM = 8};
 
 char *pkt_name[] = { "F_CON", "F_FIN", "F_ACK", "F_DATA" };
 char *st_name[] =  { "wait_CON", "CON_sent", "CONNECTED", "SENDING" };
@@ -132,10 +132,10 @@ static void resend_data(void *p)
 {
     set_timer(0); //refresh timer
     printf("Data Arrived data='%s' size:%d\n count: '%d'th left number of resend: '%d'\n", buffer_sent_data, size_sent_data, count_RTM++, RTM_MAX);
-    memcpy(((struct p_event*)p)->packet.data, buffer_sent_data, strlen(buffer_sent_data) + 1;
-           (struct p_event*)p)->size = size_sent_data;
+    memcpy(((struct p_event*)p)->packet.data, buffer_sent_data, strlen(buffer_sent_data) + 1);
+           ((struct p_event*)p)->size = size_sent_data;
     
-    send_packet(F_DATA, (struct p_event *)P), ((struct p_event *)p)->size);
+    send_packet(F_DATA, (struct p_event *)p, ((struct p_event *)p)->size);
     set_timer(SENDING_TIMEOUT);
 }
 
@@ -159,11 +159,11 @@ static void report_data(void *p)
     if (!strcmp(((struct p_event*)p)->packet.data, backup_data))
         return;
     printf("transfer completed: '%s' size: '%d'\n", ((struct p_event*)p)->packet.data, ((struct p_event*)p)->packet.size);
-    sprinf(backup_data, "%s", ((struct p_event*)p)->p_event.data);
+    sprintf(backup_data, "%s", ((struct p_event*)p)->packet.data);
 }
 
 
-struct state_action p_FSM[NUM_STATE][NUM_EVENT] = {
+struct state_action p_FSM[NUM_STATE][NUM_EVENT] ={
   //  for each event:
   //  RCV_CON,                 RCV_FIN,                 RCV_ACK,                       RCV_DATA,
   //  CONNECT,                 CLOSE,                   SEND,                          TIMEOUT,         FAIL_RTM
@@ -178,11 +178,11 @@ struct state_action p_FSM[NUM_STATE][NUM_EVENT] = {
 
   // - CONNECTED state
   {{ NULL, CONNECTED },        { close_con, wait_CON }, { NULL,      CONNECTED },      { report_data, CONNECTED },
-      { NULL, CONNECTED },        { close_con, wait_CON }, { send_data, SENDING },      { activate_RTM, ENDING },      {NULL, CONNECTED}},
+      { NULL, CONNECTED },        { close_con, wait_CON }, { send_data, SENDING },      { activate_RTM, SENDING },      {NULL, CONNECTED}},
     
   // - SENDING
     {{NULL, SENDING},       { NULL, SENDING },      { end_resending, CONNECTED },   { report_data, CONNECTED },
-    { NULL, SENDING },      { close_con, wait_CON },        { NULL, SENDING },  { resend_data, SENDING },   {close_con, wait_CON }
+        { NULL, SENDING },      { close_con, wait_CON },        { NULL, SENDING },  { resend_data, SENDING },   {close_con, wait_CON }}
 };
 
 int data_count = 0;
